@@ -1,6 +1,7 @@
 import * as React from "react";
 import { RouteComponentProps, Prompt } from "react-router-dom";
-import { IProduct, products } from "./ProductsData";
+import { IProduct, getProduct } from "./ProductsData";
+import Product from "./Product";
 
 // pathからのパラメータを取得するのに必要な型定義
 type Props = RouteComponentProps<{ id: string }>;
@@ -10,6 +11,7 @@ type Props = RouteComponentProps<{ id: string }>;
 interface IState {
   product?: IProduct; // 商品のタイプ
   added: boolean; // 買い物かごへの有無
+  loading: boolean; //ローディングかどうか
 }
 
 class ProductPage extends React.Component<Props, IState> {
@@ -17,16 +19,20 @@ class ProductPage extends React.Component<Props, IState> {
     super(props);
     this.state = {
       added: false,
+      loading: true, // 初期値
     };
   }
 
   // idをキーにして商品を特定したい
   // RouteComponentPropsのmatchオブジェクトを使用する
-  public componentDidMount() {
+  public async componentDidMount() {
     if (this.props.match.params.id) {
       const id: number = parseInt(this.props.match.params.id, 10); // string から numberに変更
-      const product = products.filter((p) => p.id === id)[0]; // productsからidが一致するものをとりだし
-      this.setState({ added: false, product: product });
+      const product = await getProduct(id);
+      // const product = products.filter((p) => p.id === id)[0]; // productsからidが一致するものをとりだし
+      if (product !== null) {
+        this.setState({ loading: false, product: product });
+      }
     }
   }
   // 買い物かごへの追加
@@ -45,20 +51,13 @@ class ProductPage extends React.Component<Props, IState> {
     return (
       <div className="page-container">
         <Prompt when={!this.state.added} message={this.navAwayMessage} />
-        {product ? (
-          <React.Fragment>
-            <h1>{product.name}</h1>
-            <p>{product.description}</p>
-            <p className="product-price">
-              {new Intl.NumberFormat("un-US", {
-                currency: "USD",
-                style: "currency",
-              }).format(product.price)}
-            </p>
-            {!this.state.added && (
-              <button onClick={this.handleAddClick}>Add to basket</button>
-            )}
-          </React.Fragment>
+        {product || this.state.loading ? (
+          <Product
+            loading={this.state.loading}
+            product={product}
+            inBasket={this.state.added}
+            onAddToBasket={this.handleAddClick}
+          />
         ) : (
           <p>Product not found!</p>
         )}
